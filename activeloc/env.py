@@ -2,6 +2,9 @@
 OpenAI Gym environment for taking pointlaser measurements to reduce
 uncertainty.
 '''
+
+# TODO check if all normalisations are correct (right boundaries are used)
+
 # Params
 MIN_MESH_OFFSET = 100  # Minimum offset from mesh boundary
 POSITION_STDDEV = 50  # Initial position standard deviation
@@ -26,7 +29,6 @@ VAR_EPS_LEN = False  # Variable Episode Length
 DATASET_DIR = 'activeloc/data/train_data'
 MESH_DIR = 'meshes'
 MESH_FILE = 'r_map'
-
 
 # Imports
 import gym
@@ -53,7 +55,7 @@ gym.logger.set_level(40)
 
 
 class ActiveLocalizationEnv(gym.Env):
-    def __init__(self, map_obs='point_encodings', map_size=16, num_lasers=1,
+    def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True):
         # Load mesh
         self._mesh_nr = 0
@@ -80,7 +82,12 @@ class ActiveLocalizationEnv(gym.Env):
         self.use_mean_pos = use_mean_pos
         self.use_measurements = use_measurements
         self.use_map = use_map
-        self.map_size = map_size
+        if map_size:
+            self.map_size = map_size
+        elif 'encodings' in map_obs:
+            self.map_size = 16
+        else:
+            self.map_size = 1024
         self.map_obs = map_obs
         self.use_map_height = use_map_height
         self.observation_space = self.make_observation_space()
@@ -126,7 +133,7 @@ class ActiveLocalizationEnv(gym.Env):
         '''
         Linearly normalize measurements inside mesh to range 0 and 1.
         '''
-        return z/self._lasers.range
+        return z / self._lasers.range
 
     def _normalize_cov(self, cov):
         '''
@@ -144,36 +151,47 @@ class ActiveLocalizationEnv(gym.Env):
         Normalize belief parameters to get observation.
         '''
         obs = self._normalize_cov(self._xbel.cov)
-        mean_norm = self._normalize_position(self._xbel.mean) # return mean_norm
+        mean_norm = self._normalize_position(self._xbel.mean)
         laser_dir = np.dot(self._q.as_matrix(), self._lasers._directions).T.flatten()
         if self.use_mean_pos: obs = np.hstack((obs, mean_norm))
-        if self.use_measurements: obs = np.hstack((obs, laser_dir))
-        if self.use_map: obs = np.hstack((obs, self._curr_map))
+        if self.use_measurements:
+            obs = np.hstack((obs, laser_dir))
+            if z_norm:
+                obs = np.hstack((obs, z_norm.squeeze()))
+            else:
+                obs = np.hstack((obs, np.zeros(self.num_lasers)))
         if self.use_map_height: obs = np.hstack((obs, self._curr_mesh_h))
-
-        if z_norm:
-            if self.use_measurements: obs = np.hstack((obs, z_norm.squeeze()))
-        else:
-            if self.use_measurements: obs = np.hstack((obs, np.zeros(self.num_lasers)))
+        if self.use_map:
+            if 'encodings' in self.map_obs:
+                obs = np.hstack((obs, self._curr_map))
+            else:
+                return dict(sensors=obs, map=self._curr_map)
         return obs
 
     def make_observation_space(self):
         # Numerical range of observations:
-        # [Normalized XYZ postion, Standard Deviations, Correlations, Observations, Map Encoding, map_height]
+        # standard deviations and correlation coefficients
         low = np.array([0, 0, 0, -1, -1, -1])
         high = np.array([+1, +1, +1, +1, +1, +1])
-        if self.use_mean_pos:
+        low_map = None
+        high_map = None
+        if self.use_mean_pos:  # estimated position in map
             low = np.hstack((low, np.zeros(3)))
             high = np.hstack((high, np.ones(3)))
-        if self.use_measurements:
+        if self.use_measurements:  # direction and value of last measurements # TODO use only self._q
             low = np.hstack((low, -np.ones(self.num_lasers * 4)))
             high = np.hstack((high, np.ones(self.num_lasers * 4)))
-        if self.use_map:
-            low = np.hstack((low, -np.inf * np.ones(self.map_size)))
-            high = np.hstack((high, np.inf * np.ones(self.map_size)))
-        if self.use_map_height:
+        if self.use_map_height:  # map height
             low = np.hstack((low, np.zeros(1)))
             high = np.hstack((high, np.ones(1)))
+        if self.use_map and not 'encodings' in self.map_obs:  # map encoding or point cloud
+            return gym.spaces.Dict(
+                spaces={
+                    "sensors": spaces.Box(low=low, high=high, dtype=np.float),
+                    "map": gym.spaces.Box(0, 255, [self.map_size, 2], dtype=np.uint8)})
+        elif self.use_map:
+            low = np.hstack((low, -np.inf * np.ones(self.map_size)))
+            high = np.hstack((high, np.inf * np.ones(self.map_size)))
         return spaces.Box(low=low, high=high, dtype=np.float)
 
     def _get_reward(self):
@@ -184,8 +202,11 @@ class ActiveLocalizationEnv(gym.Env):
         # uncertainty is defined as the volume of covariance ellipsoid
         uncertainty = self._xbel.uncertainty('det')
         max_eigval = self._xbel.uncertainty('max_eigval')
-        dist = np.linalg.norm(self._xbel.mean-self._pose_gt['x'])
-        reward = USE_UNCERT_REWARD*UNCERT_REWARD*(self._prev_uncertainty - uncertainty) + USE_DIST_REWARD*DIST_REWARD*(self._prev_dist - dist) + USE_EIGVAL_REWARD*EIGVAL_REWARD*(self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
+        dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
+        reward = USE_UNCERT_REWARD * UNCERT_REWARD * (
+                    self._prev_uncertainty - uncertainty) + USE_DIST_REWARD * DIST_REWARD * (
+                             self._prev_dist - dist) + USE_EIGVAL_REWARD * EIGVAL_REWARD * (
+                             self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
         self._prev_max_eigval = max_eigval
         self._prev_uncertainty = uncertainty
         self._prev_dist = dist
@@ -214,7 +235,7 @@ class ActiveLocalizationEnv(gym.Env):
     def store_values(self):
         self.volume_per_eps.append(self._xbel.uncertainty('det'))
         self.maxaxis_per_eps.append(self._xbel.uncertainty('max_eigval'))
-        self.gt_dist.append(np.linalg.norm(self._xbel.mean-self._pose_gt['x']))
+        self.gt_dist.append(np.linalg.norm(self._xbel.mean - self._pose_gt['x']))
 
     @staticmethod
     def _action2rot(action):
@@ -230,13 +251,13 @@ class ActiveLocalizationEnv(gym.Env):
         '''
         if self._n_disc_actions:
             n = self._n_disc_actions
-            action_list = np.zeros([np.power(n+1, 3), 3])
+            action_list = np.zeros([np.power(n + 1, 3), 3])
             index = 0
-            for i in range(n+1):
+            for i in range(n + 1):
                 ii = -1 + (2 / n) * i
-                for j in range(n+1):
+                for j in range(n + 1):
                     jj = -1 + (2 / n) * j
-                    for k in range(n+1):
+                    for k in range(n + 1):
                         kk = -1 + (2 / n) * k
                         action_list[index, :] = (ii, jj, kk)
                         index += 1
@@ -258,7 +279,7 @@ class ActiveLocalizationEnv(gym.Env):
         # Transform to discrete action and rotation
         rot, action = self._transform_action(action)
         # Convert to scipy Rotation object
-        #rot = self._action2rot(action)
+        # rot = self._action2rot(action)
         self._q = rot
         self._pose_gt['q'] = rot
         # Take measurement from new orientation
@@ -284,9 +305,9 @@ class ActiveLocalizationEnv(gym.Env):
         # Import new mesh
         mesh_file_dir = os.path.join(DATASET_DIR, MESH_DIR)
         num_meshes = len(os.listdir(mesh_file_dir))
-        self._mesh_nr = 1 + (self._mesh_nr%num_meshes)
+        self._mesh_nr = 1 + (self._mesh_nr % num_meshes)
         self._mesh = Mesh(self._mesh_nr, mesh_file_dir)
-        self._curr_mesh_h = np.asarray([(self._mesh.max_bounds-self._mesh.min_bounds)[2]]).reshape(1)
+        self._curr_mesh_h = np.asarray([(self._mesh.max_bounds - self._mesh.min_bounds)[2]]).reshape(1)
         self._bayes_filter._mesh = self._mesh
 
         # Sample position
@@ -298,14 +319,14 @@ class ActiveLocalizationEnv(gym.Env):
         # Reset belief
         self._xbel.mean = pos
         # Initial diagonal covariance matrix
-        self._xbel.cov = np.eye(3) * self._max_stddev**2
+        self._xbel.cov = np.eye(3) * self._max_stddev ** 2
         # Store uncertainty for calculating reward
         self._initial_maxeigval = self._xbel.uncertainty('max_eigval')
         self._prev_uncertainty = self._xbel.uncertainty('det')
         self._prev_max_eigval = self._initial_maxeigval
         # Sample a fixed ground truth position
         self._pose_gt['x'] = self._xbel.sample()
-        self._prev_dist = np.linalg.norm(self._xbel.mean-self._pose_gt['x'])
+        self._prev_dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
         # Reset orientation of lasers
         self._pose_gt['q'] = Rotation.from_euler('xyz', np.zeros(3))
         self._q = Rotation.from_euler('xyz', np.zeros(3))
@@ -338,10 +359,10 @@ class ActiveLocalizationEnv(gym.Env):
             return encoding
         elif self.map_obs == 'lidar':
             bsp_tree = self._mesh._bsp_tree
-            point_cloud = do_lidar_scan(position, bsp_tree, num_points=1024)
+            point_cloud = do_lidar_scan(position, bsp_tree, num_points=self.map_size)
             return point_cloud
 
-    def _get_map_file(self,):
+    def _get_map_file(self, ):
         return os.path.join(DATASET_DIR, self.map_obs, self.map_obs + "_" +
                             str(self.map_size), MESH_FILE + str(self._mesh_nr) + '.npy')
 
