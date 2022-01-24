@@ -9,7 +9,7 @@ from vtk.util.numpy_support import vtk_to_numpy
 
 class Renderer:
     def __init__(self,
-                 window_size=(1, 1),
+                 window_size=(500, 500),
                  offscreen=False,
                  ortho=False,
                  background='MidnightBlue'):

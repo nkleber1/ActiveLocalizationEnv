@@ -34,6 +34,7 @@ MESH_FILE = 'r_map'
 import gym
 import os
 import numpy as np
+import time
 import vtk
 from scipy.spatial.transform import Rotation as R
 from gym import spaces
@@ -76,8 +77,8 @@ class ActiveLocalizationEnv(gym.Env):
         # Minimum offset from mesh boundaries to sample positions
         self._mesh_offset = np.array([MIN_MESH_OFFSET, self._lasers.range])
         # Disable rendering
-        self.rendering = False
-        self.renderer = Renderer()
+        # self.rendering = False
+        # self.renderer = Renderer()
 
         self.use_mean_pos = use_mean_pos
         self.use_measurements = use_measurements
@@ -298,6 +299,7 @@ class ActiveLocalizationEnv(gym.Env):
         '''
         Reset environment to start a new episode.
         '''
+        self.render_rest_flag = True
         self._current_step = 0
         # Reset VTK measurement visualization
         self._meas.reset()
@@ -334,16 +336,15 @@ class ActiveLocalizationEnv(gym.Env):
         obs = self._get_observation()
         return obs
 
-    def render(self, renderer=None, reset=False):
-        if renderer == None: renderer = self.renderer
-        if self.rendering == False:
-            self.rendering = True
-            reset = True
-        if reset == True:
-            self._mesh.renderer = renderer
-            self._xbel.renderer = renderer
-            self._meas.renderer = renderer
-        renderer.render()
+    def render(self, mode='human'):
+        if self.render_rest_flag:
+            self.renderer = Renderer()
+            self._mesh.renderer = self.renderer
+            self._xbel.renderer = self.renderer
+            self._meas.renderer = self.renderer
+            self.render_rest_flag = False
+        self.renderer.render()
+        time.sleep(1)
 
     def get_map(self):
         return self._mesh._map
