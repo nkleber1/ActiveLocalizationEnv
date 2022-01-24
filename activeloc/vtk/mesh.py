@@ -82,8 +82,7 @@ class Mesh:
         '''
         points = vtk.vtkPoints()
         # Perform intersection
-        code = self._bsp_tree.IntersectWithLine(p1, p2, self._tol, points,
-                                                None)
+        code = self._bsp_tree.IntersectWithLine(p1, p2, self._tol, points, None)
         if code == 0:
             # Return p2 if no intersection is found
             return p2.copy()
