@@ -381,7 +381,7 @@ class ActiveLocalizationEnv(gym.Env):
         return self._curr_map
 
     def _set_map(self, position):  # TODO make position self.position
-        if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings', 'point_cloud']:  #
+        if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings', 'point_cloud', 'point_cloud_3d']:
             map_file = self._get_map_file()
             return np.load(map_file)
         elif self.map_obs == 'lidar_encodings':
