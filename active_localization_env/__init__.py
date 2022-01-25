@@ -1,1 +1,1 @@
-from .env import ActiveLocalizationEnv
+from .env import ActiveLocalizationEnv, make_env

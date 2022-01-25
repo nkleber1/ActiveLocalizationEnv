@@ -27,6 +27,7 @@ VAR_EPS_LEN = False  # Variable Episode Length
 
 # Params for dirs
 DATASET_DIR = 'activeloc/data/train_data'
+DATASET_EVAL_DIR = 'activeloc/data/eval_data'
 MESH_DIR = 'meshes'
 MESH_FILE = 'r_map'
 
@@ -39,6 +40,7 @@ import vtk
 from scipy.spatial.transform import Rotation as R
 from gym import spaces
 from gym.utils import seeding
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from scipy.spatial.transform import Rotation
 from sklearn.neighbors import KDTree
 # Relative Imports
@@ -55,9 +57,22 @@ EULER_RANGE = np.array([np.pi, np.pi / 2, np.pi])
 gym.logger.set_level(40)
 
 
+def make_env(map_obs, eval=False):
+    if eval:
+        return DummyVecEnv([lambda: ActiveLocalizationEnv(map_obs, eval=True)])
+    else:
+        return ActiveLocalizationEnv(map_obs)
+
+
 class ActiveLocalizationEnv(gym.Env):
-    def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1,
+    def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, eval=False,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True):
+
+        if eval:
+            self.dataset_dir = DATASET_EVAL_DIR
+        else:
+            self.dataset_dir = DATASET_DIR
+
         # Load mesh
         self._mesh_nr = 0
         # Initialize Laser cofiguration
@@ -76,9 +91,6 @@ class ActiveLocalizationEnv(gym.Env):
         self._max_stddev = POSITION_STDDEV
         # Minimum offset from mesh boundaries to sample positions
         self._mesh_offset = np.array([MIN_MESH_OFFSET, self._lasers.range])
-        # Disable rendering
-        # self.rendering = False
-        # self.renderer = Renderer()
 
         self.use_mean_pos = use_mean_pos
         self.use_measurements = use_measurements
@@ -305,7 +317,7 @@ class ActiveLocalizationEnv(gym.Env):
         self._meas.reset()
 
         # Import new mesh
-        mesh_file_dir = os.path.join(DATASET_DIR, MESH_DIR)
+        mesh_file_dir = os.path.join(self.dataset_dir, MESH_DIR)
         num_meshes = len(os.listdir(mesh_file_dir))
         self._mesh_nr = 1 + (self._mesh_nr % num_meshes)
         self._mesh = Mesh(self._mesh_nr, mesh_file_dir)
@@ -364,7 +376,7 @@ class ActiveLocalizationEnv(gym.Env):
             return point_cloud
 
     def _get_map_file(self, ):
-        return os.path.join(DATASET_DIR, self.map_obs, self.map_obs + "_" +
+        return os.path.join(self.dataset_dir, self.map_obs, self.map_obs + "_" +
                             str(self.map_size), MESH_FILE + str(self._mesh_nr) + '.npy')
 
     def seed(self, seed=None):
