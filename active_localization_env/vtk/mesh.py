@@ -9,7 +9,7 @@ import vtk
 from stl import mesh
 from .local_info import get_local_info, correct_rotations_m1
 #from vtk.util.numpy_support import vtk_to_numpy
-from activeloc.env import MESH_FILE
+from active_localization_env.env import MESH_FILE
 
 class Mesh:
     def __init__(self, mesh_nr, mesh_file_dir, raycast_tol=1, renderer=None):
