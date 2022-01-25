@@ -203,10 +203,11 @@ class ActiveLocalizationEnv(gym.Env):
             low = np.hstack((low, np.zeros(1)))
             high = np.hstack((high, np.ones(1)))
         if self.use_map and not 'encodings' in self.map_obs:  # map encoding or point cloud
+            dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(
                 spaces={
                     "sensors": spaces.Box(low=low, high=high, dtype=np.float),
-                    "map": gym.spaces.Box(0, 255, [self.map_size, 2], dtype=np.uint8)})
+                    "map": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.uint8)})
         elif self.use_map:
             low = np.hstack((low, -np.inf * np.ones(self.map_size)))
             high = np.hstack((high, np.inf * np.ones(self.map_size)))
@@ -381,9 +382,13 @@ class ActiveLocalizationEnv(gym.Env):
         return self._curr_map
 
     def _set_map(self, position):  # TODO make position self.position
-        if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings', 'point_cloud', 'point_cloud_3d']:
+        if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings']:
             map_file = self._get_map_file()
             return np.load(map_file)
+        elif self.map_obs in ['point_cloud', 'point_cloud_3d']:
+            map_file = self._get_map_file()
+            data = np.load(map_file)
+            return data[np.random.choice(data.shape[0], int(self.map_size), replace=False)]
         elif self.map_obs == 'lidar_encodings':
             bsp_tree = self._mesh._bsp_tree
             point_cloud = do_lidar_scan(position, bsp_tree)
@@ -394,9 +399,13 @@ class ActiveLocalizationEnv(gym.Env):
             point_cloud = do_lidar_scan(position, bsp_tree, num_points=self.map_size)
             return point_cloud
 
-    def _get_map_file(self, ):
-        return os.path.join(self.dataset_dir, self.map_obs, self.map_obs + "_" +
-                            str(self.map_size), MESH_FILE + str(self._mesh_nr) + '.npy')
+    def _get_map_file(self):
+        if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings']:
+            return os.path.join(self.dataset_dir, self.map_obs, self.map_obs + "_" +
+                                str(self.map_size), MESH_FILE + str(self._mesh_nr) + '.npy')
+        elif self.map_obs in ['point_cloud', 'point_cloud_3d']:
+            return os.path.join(self.dataset_dir, self.map_obs, MESH_FILE + str(self._mesh_nr) + '.npy')
+
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
