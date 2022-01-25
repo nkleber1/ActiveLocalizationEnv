@@ -213,7 +213,7 @@ class ActiveLocalizationEnv(gym.Env):
         return spaces.Box(low=low, high=high, dtype=np.float)
 
     def _get_reward(self):
-        if self.reward == 'orifinal':
+        if self.reward == 'original':
             return self._original_reward()
         elif self.reward == 'simple':
             return self._simple_reward()
