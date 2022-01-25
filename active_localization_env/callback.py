@@ -42,15 +42,9 @@ class TensorboardCallback(BaseCallback):
         self.max_axis_mean += np.mean(np.asarray(env.maxaxis_per_eps))
         self.gt_dist_mean += np.mean(np.asarray(env.gt_dist))
         if self.rollout_cnt == self.rollouts_per_summary:
-            summary = tf.Summary(value=[tf.Summary.Value(tag='Epoch/Average Volume',
-                                                         simple_value=(self.vol_mean/self.rollout_cnt))])
-            self.locals['writer'].add_summary(summary, self.num_timesteps)
-            summary = tf.Summary(value=[tf.Summary.Value(tag='Epoch/Average Max Axis',
-                                                         simple_value=(self.max_axis_mean/self.rollout_cnt))])
-            self.locals['writer'].add_summary(summary, self.num_timesteps)
-            summary = tf.Summary(value=[tf.Summary.Value(tag='Epoch/Dist to Ground Truth',
-                                                         simple_value=(self.gt_dist_mean/self.rollout_cnt))])
-            self.locals['writer'].add_summary(summary, self.num_timesteps)
+            self.model.logger.record_mean('Epoch/Average Volume', self.vol_mean)
+            self.model.logger.record_mean('Epoch/Average Max Axis', self.max_axis_mean)
+            self.model.logger.record_mean('Epoch/Dist to Ground Truth', self.gt_dist_mean)
             self.rollout_cnt = 0
             self.vol_mean = 0
             self.gt_dist_mean = 0
