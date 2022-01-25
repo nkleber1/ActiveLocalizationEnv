@@ -15,7 +15,7 @@ MIN_UNCERTAINTY = 5  # Uncertainty goal
 GOAL_REWARD = 100  # Value for goal achieved
 HORIZON = 10  # Maximum number of steps (measurements) in one epoch
 
-# Params for reward function  # TODO make file for reward function and add reward function based on result
+# Params for reward function
 USE_UNCERT_REWARD = True
 UNCERT_REWARD = 0.1  # Weight for uncertainty reduction reward
 USE_DIST_REWARD = True
@@ -121,11 +121,19 @@ class ActiveLocalizationEnv(gym.Env):
         self.maxaxis_per_eps = []
         self.gt_dist = []
         # Seed RNG
+        self.np_random = None
         self.seed()
 
         self._prev_max_eigval = None
         self._prev_uncertainty = None
         self._prev_dist = None
+        self.renderer = None
+        self.render_rest_flag = None
+        self._mesh = None
+        self._curr_mesh_h = None
+        self._current_step = None
+        self._curr_map = None
+        self._initial_maxeigval = None
 
         # Example kwargs # TODO add to Config
         encoder_args = {
@@ -170,7 +178,7 @@ class ActiveLocalizationEnv(gym.Env):
         '''
         obs = self._normalize_cov(self._xbel.cov)
         mean_norm = self._normalize_position(self._xbel.mean)
-        laser_dir = np.dot(self._q.as_matrix(), self._lasers._directions).T.flatten()
+        laser_dir = np.dot(self._q.as_matrix(), self._lasers.directions).T.flatten()
         if self.use_mean_pos: obs = np.hstack((obs, mean_norm))
         if self.use_measurements:
             obs = np.hstack((obs, laser_dir))
@@ -202,7 +210,7 @@ class ActiveLocalizationEnv(gym.Env):
         if self.use_map_height:  # map height
             low = np.hstack((low, np.zeros(1)))
             high = np.hstack((high, np.ones(1)))
-        if self.use_map and not 'encodings' in self.map_obs:  # map encoding or point cloud
+        if self.use_map and not 'encodings' in self.map_obs:
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(
                 spaces={
@@ -390,12 +398,12 @@ class ActiveLocalizationEnv(gym.Env):
             data = np.load(map_file)
             return data[np.random.choice(data.shape[0], int(self.map_size), replace=False)]
         elif self.map_obs == 'lidar_encodings':
-            bsp_tree = self._mesh._bsp_tree
+            bsp_tree = self._mesh.bsp_tree
             point_cloud = do_lidar_scan(position, bsp_tree)
             encoding = self.encoder.encode_np(point_cloud)
             return encoding
         elif self.map_obs == 'lidar':
-            bsp_tree = self._mesh._bsp_tree
+            bsp_tree = self._mesh.bsp_tree
             point_cloud = do_lidar_scan(position, bsp_tree, num_points=self.map_size)
             return point_cloud
 
@@ -405,7 +413,6 @@ class ActiveLocalizationEnv(gym.Env):
                                 str(self.map_size), MESH_FILE + str(self._mesh_nr) + '.npy')
         elif self.map_obs in ['point_cloud', 'point_cloud_3d']:
             return os.path.join(self.dataset_dir, self.map_obs, MESH_FILE + str(self._mesh_nr) + '.npy')
-
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

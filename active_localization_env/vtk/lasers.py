@@ -31,16 +31,16 @@ class Lasers:
     def __init__(self, num_lasers):
         if num_lasers == 1:
             # Single pointlaser along X axis
-            self._directions = np.array([[1, 0, 0]]).T
+            self.directions = np.array([[1, 0, 0]]).T
         elif num_lasers == 2:
             # Two lasers along X, Y axes
-            self._directions = np.array([[1, 0, 0], [0, 1, 0]]).T
+            self.directions = np.array([[1, 0, 0], [0, 1, 0]]).T
         else:
             # Three lasers along X, Y, Z axes
-            self._directions = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]).T
+            self.directions = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]).T
 
         # Number of lasers
-        self.num = self._directions.shape[1]
+        self.num = self.directions.shape[1]
         # Range
         self.range = 5000.  # (mm)
         # Measurement noise
@@ -51,7 +51,7 @@ class Lasers:
         Get endpoints of laser rays based on given laser array orientation.
         '''
         rotation_matrix = q.as_matrix()
-        endpoints = self.range * np.dot(rotation_matrix, self._directions)
+        endpoints = self.range * np.dot(rotation_matrix, self.directions)
         return endpoints
 
     def direction(self, q, step):
@@ -61,10 +61,10 @@ class Lasers:
         '''
 
         if step == 0:
-            self._directions = np.array([[1, 0, 0]]).T
-            return self._directions
+            self.directions = np.array([[1, 0, 0]]).T
+            return self.directions
         else:
             rotation_matrix = q.as_dcm()
-            self._directions = np.dot(rotation_matrix, self._directions)
-            self._directions = self._directions / np.linalg.norm(self._directions)
-            return self._directions
+            self.directions = np.dot(rotation_matrix, self.directions)
+            self.directions = self.directions / np.linalg.norm(self.directions)
+            return self.directions

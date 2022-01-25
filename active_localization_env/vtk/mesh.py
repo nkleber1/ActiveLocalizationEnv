@@ -19,9 +19,9 @@ class Mesh:
         self._mesh = self.load_stl(mesh_file)
 
         # Build BSP tree for ray-casting
-        self._bsp_tree = vtk.vtkModifiedBSPTree()
-        self._bsp_tree.SetDataSet(self._mesh)
-        self._bsp_tree.BuildLocator()
+        self.bsp_tree = vtk.vtkModifiedBSPTree()
+        self.bsp_tree.SetDataSet(self._mesh)
+        self.bsp_tree.BuildLocator()
         # Implicit function to find if point is inside/outside surface and at what distance
         # https://vtk.org/doc/nightly/html/classvtkImplicitFunction.html#details
         self._implicit_function = vtk.vtkImplicitPolyDataDistance()
@@ -82,7 +82,7 @@ class Mesh:
         '''
         points = vtk.vtkPoints()
         # Perform intersection
-        code = self._bsp_tree.IntersectWithLine(p1, p2, self._tol, points, None)
+        code = self.bsp_tree.IntersectWithLine(p1, p2, self._tol, points, None)
         if code == 0:
             # Return p2 if no intersection is found
             return p2.copy()
