@@ -65,7 +65,7 @@ def make_env(map_obs, eval=False):
 
 
 class ActiveLocalizationEnv(gym.Env):
-    def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, eval=False,
+    def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True):
 
         if eval:
@@ -111,6 +111,7 @@ class ActiveLocalizationEnv(gym.Env):
 
         self._n_disc_actions = N_DISC_ACTIONS
         # Weighing factor for final reward
+        self.reward = reward
         self._alpha = REWARD_ALPHA
         self.use_goal_rew = USE_GOAL_REWARD
         self.min_uncertainty = MIN_UNCERTAINTY
@@ -121,6 +122,10 @@ class ActiveLocalizationEnv(gym.Env):
         self.gt_dist = []
         # Seed RNG
         self.seed()
+
+        self._prev_max_eigval = None
+        self._prev_uncertainty = None
+        self._prev_dist = None
 
         # Example kwargs # TODO add to Config
         encoder_args = {
@@ -208,6 +213,20 @@ class ActiveLocalizationEnv(gym.Env):
         return spaces.Box(low=low, high=high, dtype=np.float)
 
     def _get_reward(self):
+        if self.reward == 'orifinal':
+            return self._original_reward()
+        elif self.reward == 'simple':
+            return self._simple_reward()
+
+    def _simple_reward(self):
+        '''
+        return distance at end of episode as a punishment
+        '''
+        if self._is_done():
+            return - np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
+        return 0
+
+    def _original_reward(self):
         '''
         Return immediate reward for the step.
         '''
@@ -220,9 +239,6 @@ class ActiveLocalizationEnv(gym.Env):
                     self._prev_uncertainty - uncertainty) + USE_DIST_REWARD * DIST_REWARD * (
                              self._prev_dist - dist) + USE_EIGVAL_REWARD * EIGVAL_REWARD * (
                              self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
-        self._prev_max_eigval = max_eigval
-        self._prev_uncertainty = uncertainty
-        self._prev_dist = dist
         if self._is_done():
             # Final reward is the reduction in the major axis length of the
             # covariance ellipsoid from the start of the episode
@@ -285,6 +301,9 @@ class ActiveLocalizationEnv(gym.Env):
         return rot, action
 
     def step(self, action):
+        self._prev_max_eigval = self._xbel.uncertainty('max_eigval')
+        self._prev_uncertainty = self._xbel.uncertainty('det')
+        self._prev_dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
         # Increment count
         self._current_step += 1
         # Clip out of range actions
@@ -328,7 +347,7 @@ class ActiveLocalizationEnv(gym.Env):
         pos = self._mesh.sample_position(*self._mesh_offset)
 
         # get map_encoding
-        self._curr_map = self._get_map(pos)
+        self._curr_map = self._set_map(pos)
 
         # Reset belief
         self._xbel.mean = pos
@@ -359,9 +378,9 @@ class ActiveLocalizationEnv(gym.Env):
         time.sleep(1)
 
     def get_map(self):
-        return self._mesh._map
+        return self._curr_map
 
-    def _get_map(self, position):  # TODO make position self.position
+    def _set_map(self, position):  # TODO make position self.position
         if self.map_obs in ['grid_encodings', 'point_encodings', '3d_encodings', 'point_cloud']:
             map_file = self._get_map_file()
             return np.load(map_file)
