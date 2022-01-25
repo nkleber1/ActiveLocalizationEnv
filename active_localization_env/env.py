@@ -26,8 +26,8 @@ MEASUREMENT_COST = 0.0
 VAR_EPS_LEN = False  # Variable Episode Length
 
 # Params for dirs
-DATASET_DIR = 'activeloc/data/train_data'
-DATASET_EVAL_DIR = 'activeloc/data/eval_data'
+DATASET_DIR = 'active_localization_env/data/train_data'
+DATASET_EVAL_DIR = 'active_localization_env/data/eval_data'
 MESH_DIR = 'meshes'
 MESH_FILE = 'r_map'
 
