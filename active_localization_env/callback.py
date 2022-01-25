@@ -7,7 +7,7 @@ class TensorboardCallback(BaseCallback):
     """
     Custom callback for plotting additional values in tensorboard.
     """
-    def __init__(self, steps_per_summary, steps_per_update, verbose=0):
+    def __init__(self, rollouts_per_summary=1, verbose=0):
         super(TensorboardCallback, self).__init__(verbose)
         # Those variables will be accessible in the callback
         # (they are defined in the base class)
@@ -26,7 +26,7 @@ class TensorboardCallback(BaseCallback):
         # # Sometimes, for event callback, it is useful
         # # to have access to the parent object
         # self.parent = None  # type: Optional[BaseCallback]
-        self.rollouts_per_summary = steps_per_summary/steps_per_update
+        self.rollouts_per_summary = rollouts_per_summary
         self.rollout_cnt = 0
         self.vol_mean = 0
         self.gt_dist_mean = 0
