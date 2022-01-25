@@ -26,7 +26,6 @@ class TensorboardCallback(BaseCallback):
         # # Sometimes, for event callback, it is useful
         # # to have access to the parent object
         # self.parent = None  # type: Optional[BaseCallback]
-
         self.rollouts_per_summary = steps_per_summary/steps_per_update
         self.rollout_cnt = 0
         self.vol_mean = 0
