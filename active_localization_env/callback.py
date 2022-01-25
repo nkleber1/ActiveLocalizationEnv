@@ -1,14 +1,13 @@
-import tensorflow as tf
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
 
-class TensorboardCallback(BaseCallback):
+class LoggingCallback(BaseCallback):
     """
     Custom callback for plotting additional values in tensorboard.
     """
     def __init__(self, rollouts_per_summary=1, verbose=0):
-        super(TensorboardCallback, self).__init__(verbose)
+        super(LoggingCallback, self).__init__(verbose)
         # Those variables will be accessible in the callback
         # (they are defined in the base class)
         # The RL model

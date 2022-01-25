@@ -1,2 +1,2 @@
 from .env import ActiveLocalizationEnv, make_env
-from .callback import TensorboardCallback
+from .callback import LoggingCallback
