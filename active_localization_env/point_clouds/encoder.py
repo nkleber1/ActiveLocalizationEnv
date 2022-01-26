@@ -29,12 +29,13 @@ def select_model(args):
 
 
 class Encoder(nn.Module):
-    def __init__(self, kwargs):
+    def __init__(self, kwargs, pretrained=True):
         super(Encoder, self).__init__()
         self.args = Namespace(**kwargs)
         self.encoder, self.vae_bottleneck = select_model(self.args)
-        self.load_state_dict(make_state_dict(self.args.pretrain))
-        print("Load Encoder")
+        if pretrained:
+            self.load_state_dict(make_state_dict(self.args.pretrain))
+            print("Load Encoder")
 
     def forward(self, point_cloud):
         feature = self.encoder(point_cloud)
