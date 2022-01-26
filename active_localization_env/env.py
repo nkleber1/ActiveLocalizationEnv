@@ -137,9 +137,9 @@ class ActiveLocalizationEnv(gym.Env):
 
         # Example kwargs # TODO add to Config
         encoder_args = {
-            'pretrain': 'point_encoder/weights/lidar_16.pkl',
+            'pretrain': 'active_localization_env/point_clouds/weights/lidar_16.pkl',
             'encoder_type': 'graph_s',
-            'feat_dims': map_size,
+            'feat_dims': self.map_size,
             'k': 64,
             'dataset': 'original_uni',
             'no_vae': False,
@@ -191,7 +191,7 @@ class ActiveLocalizationEnv(gym.Env):
             if 'encodings' in self.map_obs:
                 obs = np.hstack((obs, self._curr_map))
             else:
-                return dict(sensors=obs, map=self._curr_map)
+                return dict(vector=obs, point_cloud=self._curr_map)
         return obs
 
     def make_observation_space(self):
@@ -214,8 +214,8 @@ class ActiveLocalizationEnv(gym.Env):
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(
                 spaces={
-                    "sensors": spaces.Box(low=low, high=high, dtype=np.float),
-                    "map": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.uint8)})
+                    "vector": spaces.Box(low=low, high=high, dtype=np.float),
+                    "point_cloud": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.uint8)})
         elif self.use_map:
             low = np.hstack((low, -np.inf * np.ones(self.map_size)))
             high = np.hstack((high, np.inf * np.ones(self.map_size)))
