@@ -49,7 +49,7 @@ from sklearn.neighbors import KDTree
 from .vtk import CustomBayesFilter, Lasers, LaserMeasurements, Mesh, PositionBelief, Renderer
 from .vtk.utils import cov2corr
 from .vtk.local_info import get_local_info, correct_rotations_m1, local_info_robot
-from .point_clouds.utils import do_lidar_scan
+from .point_clouds.utils import do_lidar_scan, do_depth_scan
 from .point_clouds import Encoder
 
 # Absolute range of XYZ euler angles
@@ -69,7 +69,7 @@ def make_env(map_obs, eval=False):
 class ActiveLocalizationEnv(gym.Env):
     def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, use_joint_states=True,
-                 robot_dynamics=True, render_robot=False):
+                 robot_dynamics=False, render_robot=False):
 
         if eval:
             self.dataset_dir = DATASET_EVAL_DIR
@@ -111,6 +111,8 @@ class ActiveLocalizationEnv(gym.Env):
             self.map_size = map_size
         elif 'encodings' in map_obs:
             self.map_size = 16
+        elif 'depth' in map_obs:
+            self.map_size = 360
         else:
             self.map_size = 1024
         self.map_obs = map_obs
@@ -201,6 +203,8 @@ class ActiveLocalizationEnv(gym.Env):
         if self.use_map:
             if 'encodings' in self.map_obs:
                 obs = np.hstack((obs, self._curr_map))
+            if 'depth' in self.map_obs:
+                return dict(vector=obs, depth=self._curr_map)
             else:
                 return dict(vector=obs, point_cloud=self._curr_map)
         return obs
@@ -224,12 +228,17 @@ class ActiveLocalizationEnv(gym.Env):
         if self.use_joint_states and self.robot_dynamics:
             low = np.hstack((low, -np.ones(self.robot_dynamics.joint_state_dim)))
             high = np.hstack((high, np.ones(self.robot_dynamics.joint_state_dim)))
-        if self.use_map and not 'encodings' in self.map_obs:
+        if self.use_map and self.map_obs == 'depth':
+            return gym.spaces.Dict(
+                spaces={
+                    "vector": spaces.Box(low=low, high=high, dtype=np.float),
+                    "depth": gym.spaces.Box(0, 1, [self.map_size, 1], dtype=np.float)})
+        elif self.use_map and not 'encodings' in self.map_obs:
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(
                 spaces={
                     "vector": spaces.Box(low=low, high=high, dtype=np.float),
-                    "point_cloud": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.float)})
+                    "point_cloud": gym.spaces.Box(0, 1, [self.map_size, dim], dtype=np.float)})
         elif self.use_map:
             low = np.hstack((low, -np.inf * np.ones(self.map_size)))
             high = np.hstack((high, np.inf * np.ones(self.map_size)))
@@ -259,9 +268,9 @@ class ActiveLocalizationEnv(gym.Env):
         max_eigval = self._xbel.uncertainty('max_eigval')
         dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
         reward = USE_UNCERT_REWARD * UNCERT_REWARD * (
-                    self._prev_uncertainty - uncertainty) + USE_DIST_REWARD * DIST_REWARD * (
-                             self._prev_dist - dist) + USE_EIGVAL_REWARD * EIGVAL_REWARD * (
-                             self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
+                self._prev_uncertainty - uncertainty) + USE_DIST_REWARD * DIST_REWARD * (
+                         self._prev_dist - dist) + USE_EIGVAL_REWARD * EIGVAL_REWARD * (
+                         self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
         if self._is_done():
             # Final reward is the reduction in the major axis length of the
             # covariance ellipsoid from the start of the episode
@@ -434,6 +443,10 @@ class ActiveLocalizationEnv(gym.Env):
         elif self.map_obs == 'lidar':
             bsp_tree = self._mesh.bsp_tree
             point_cloud = do_lidar_scan(position, bsp_tree, num_points=self.map_size)
+            return point_cloud
+        elif self.map_obs == 'depth':
+            bsp_tree = self._mesh.bsp_tree
+            point_cloud = do_depth_scan(position, bsp_tree, num_points=self.map_size)
             return point_cloud
 
     def _get_map_file(self):
