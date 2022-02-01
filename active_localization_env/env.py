@@ -68,13 +68,17 @@ def make_env(map_obs, eval=False):
 
 class ActiveLocalizationEnv(gym.Env):
     def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
-                 use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, robot_dynamics=False,
-                 render_robot=False):
+                 use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, use_joint_states=True,
+                 robot_dynamics=True, render_robot=False):
 
         if eval:
             self.dataset_dir = DATASET_EVAL_DIR
         else:
             self.dataset_dir = DATASET_DIR
+
+        # Seed RNG
+        self.np_random = None
+        self.seed()
 
         # Load mesh
         self._mesh_nr = 0
@@ -95,6 +99,11 @@ class ActiveLocalizationEnv(gym.Env):
         # Minimum offset from mesh boundaries to sample positions
         self._mesh_offset = np.array([MIN_MESH_OFFSET, self._lasers.range])
 
+        if robot_dynamics:
+            self.robot_dynamics = RobotDynamics(self.np_random, render_robot)
+        else:
+            self.robot_dynamics = None
+
         self.use_mean_pos = use_mean_pos
         self.use_measurements = use_measurements
         self.use_map = use_map
@@ -106,6 +115,7 @@ class ActiveLocalizationEnv(gym.Env):
             self.map_size = 1024
         self.map_obs = map_obs
         self.use_map_height = use_map_height
+        self.use_joint_states = use_joint_states
         self.observation_space = self.make_observation_space()
         # Numerical range of actions: Normalized rotation
         self.action_space = spaces.Box(low=np.array([-1, -1, -1]),
@@ -123,9 +133,6 @@ class ActiveLocalizationEnv(gym.Env):
         self.volume_per_eps = []
         self.maxaxis_per_eps = []
         self.gt_dist = []
-        # Seed RNG
-        self.np_random = None
-        self.seed()
 
         self._prev_max_eigval = None
         self._prev_uncertainty = None
@@ -149,11 +156,6 @@ class ActiveLocalizationEnv(gym.Env):
         }
         if map_obs == 'lidar_encodings':
             self.encoder = Encoder(encoder_args)
-
-        if robot_dynamics:
-            self.robot_dynamics = RobotDynamics(self.np_random, render_robot)
-        else:
-            self.robot_dynamics = None
 
     def _normalize_position(self, xyz):
         '''
@@ -195,6 +197,7 @@ class ActiveLocalizationEnv(gym.Env):
             else:
                 obs = np.hstack((obs, np.zeros(self.num_lasers)))
         if self.use_map_height: obs = np.hstack((obs, self._curr_mesh_h))
+        if self.use_joint_states and self.robot_dynamics: obs = np.hstack((obs, self.robot_dynamics.joint_states))
         if self.use_map:
             if 'encodings' in self.map_obs:
                 obs = np.hstack((obs, self._curr_map))
@@ -218,6 +221,9 @@ class ActiveLocalizationEnv(gym.Env):
         if self.use_map_height:  # map height
             low = np.hstack((low, np.zeros(1)))
             high = np.hstack((high, np.ones(1)))
+        if self.use_joint_states and self.robot_dynamics:
+            low = np.hstack((low, -np.ones(self.robot_dynamics.joint_state_dim)))
+            high = np.hstack((high, np.ones(self.robot_dynamics.joint_state_dim)))
         if self.use_map and not 'encodings' in self.map_obs:
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(

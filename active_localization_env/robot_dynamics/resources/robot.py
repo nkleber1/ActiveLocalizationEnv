@@ -85,6 +85,7 @@ class Robot:
         self.laser_z = self.jdict["laser_z"]
         self.flex_joints = [self.shoulder_rot_joint.ID, self.shoulder_fle_joint.ID, self.elbow_fle_joint.ID,
                             self.elbow_rot_joint.ID, self.wrist_fle_joint.ID, self.wrist_rot_joint.ID]
+        self.joint_state_dim = len(self.flex_joints)
 
         # Laser-Senor
         self.sensor = Sensor(self._p, self.robotID, self.transmitter.ID, self.receiver_x.ID, self.receiver_y.ID,
@@ -156,7 +157,7 @@ class Robot:
         curr_pos = self.transmitter.get_position()
         pose = dict(q=curr_q, x=curr_pos)
 
-        return pose, self.joint_states  # correct, pos_noise, curr_q, self.joint_states  # TODO remove
+        return pose, np.array(self.joint_states)  # correct, pos_noise, curr_q, self.joint_states  # TODO remove
 
     def step_simulation(self, n_steps=100, sleep=0):  # TODO CONFIG!
         for _ in range(n_steps):

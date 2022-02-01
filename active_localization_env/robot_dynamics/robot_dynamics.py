@@ -13,6 +13,7 @@ class RobotDynamics:
 
         # make robot
         self.robot = Robot(render)
+        self.joint_state_dim = self.robot.joint_state_dim
         self.start_pose = None
         self.joint_states = None
 
@@ -26,7 +27,8 @@ class RobotDynamics:
         """
         # sample new robot pose and apply if possible.
         pose = self.robot.sample_pose()
-        self.start_pose, self.joint_states = self.robot.reset(pose['x'], pose['q'])
+        self.start_pose, joint_states = self.robot.reset(pose['x'], pose['q'])
+        self.joint_states = joint_states / 10  # norm joint_states
         h_mm = self.start_pose['x'][2]
         q = self.start_pose['q']
         return h_mm, q
@@ -45,7 +47,8 @@ class RobotDynamics:
         :param a: action 3*[-1, 1] (new orientation in normed euler angels)
         :return: new orientation and deviation from the start position
         """
-        new_pose, self.joint_states = self.robot.apply_action(a)
+        new_pose, joint_states = self.robot.apply_action(a)
+        self.joint_states = joint_states / 10  # norm joint_states
         pos_noise = self.get_noise(new_pose)
         return new_pose['q'], pos_noise
 
