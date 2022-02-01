@@ -6,6 +6,8 @@ uncertainty.
 # TODO check if all normalisations are correct (right boundaries are used)
 
 # Params
+from .robot_dynamics.robot_dynamics import RobotDynamics
+
 MIN_MESH_OFFSET = 100  # Minimum offset from mesh boundary
 POSITION_STDDEV = 50  # Initial position standard deviation
 N_DISC_ACTIONS = None  # Discretization of action space
@@ -66,7 +68,8 @@ def make_env(map_obs, eval=False):
 
 class ActiveLocalizationEnv(gym.Env):
     def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
-                 use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True):
+                 use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, robot_dynamics=False,
+                 render_robot=False):
 
         if eval:
             self.dataset_dir = DATASET_EVAL_DIR
@@ -147,6 +150,11 @@ class ActiveLocalizationEnv(gym.Env):
         if map_obs == 'lidar_encodings':
             self.encoder = Encoder(encoder_args)
 
+        if robot_dynamics:
+            self.robot_dynamics = RobotDynamics(self.np_random, render_robot)
+        else:
+            self.robot_dynamics = None
+
     def _normalize_position(self, xyz):
         '''
         Linearly normalize coordinates inside mesh to range 0 and 1.
@@ -215,7 +223,7 @@ class ActiveLocalizationEnv(gym.Env):
             return gym.spaces.Dict(
                 spaces={
                     "vector": spaces.Box(low=low, high=high, dtype=np.float),
-                    "point_cloud": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.uint8)})
+                    "point_cloud": gym.spaces.Box(0, 255, [self.map_size, dim], dtype=np.float)})
         elif self.use_map:
             low = np.hstack((low, -np.inf * np.ones(self.map_size)))
             high = np.hstack((high, np.inf * np.ones(self.map_size)))
@@ -310,6 +318,12 @@ class ActiveLocalizationEnv(gym.Env):
         return rot, action
 
     def step(self, action):
+        if self.robot_dynamics:
+            print('step action:')
+            print(action)  # TODO check if it makes sense
+            action, pos_noise = self.robot_dynamics.step(action)
+            print(action)  # TODO check if it makes sense
+            self._pose_gt['x'] += pos_noise
         self._prev_max_eigval = self._xbel.uncertainty('max_eigval')
         self._prev_uncertainty = self._xbel.uncertainty('det')
         self._prev_dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
@@ -355,6 +369,17 @@ class ActiveLocalizationEnv(gym.Env):
         # Sample position
         pos = self._mesh.sample_position(*self._mesh_offset)
 
+        if self.robot_dynamics:
+            h_mm, q = self.robot_dynamics.reset()
+            pos[2] = h_mm * 1000  # m to mm
+            # Reset orientation of lasers
+            self._pose_gt['q'] = Rotation.from_euler('xyz', q)
+            self._q = Rotation.from_euler('xyz', q)
+        else:
+            # Reset orientation of lasers
+            self._pose_gt['q'] = Rotation.from_euler('xyz', np.zeros(3))
+            self._q = Rotation.from_euler('xyz', np.zeros(3))
+
         # get map_encoding
         self._curr_map = self._set_map(pos)
 
@@ -369,9 +394,7 @@ class ActiveLocalizationEnv(gym.Env):
         # Sample a fixed ground truth position
         self._pose_gt['x'] = self._xbel.sample()
         self._prev_dist = np.linalg.norm(self._xbel.mean - self._pose_gt['x'])
-        # Reset orientation of lasers
-        self._pose_gt['q'] = Rotation.from_euler('xyz', np.zeros(3))
-        self._q = Rotation.from_euler('xyz', np.zeros(3))
+
         # Get observation from belief
         obs = self._get_observation()
         return obs

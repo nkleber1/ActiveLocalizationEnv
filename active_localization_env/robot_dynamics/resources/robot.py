@@ -11,20 +11,18 @@ from pybullet_utils import bullet_client
 from scipy.spatial.transform import Rotation as R
 
 MAX_DISTANCE = 100
-EULER_RANGE = np.array([np.pi, np.pi / 2, np.pi])
+EULER_RANGE = np.array([np.pi, np.pi, np.pi])  # np.array([np.pi, np.pi / 2, np.pi])
 
 
 class Robot:
     """
     Base class for mujoco .xml based agents.
     """
-    def __init__(self, args):
-        self.args = args
-
+    def __init__(self, render=True):
         # init bullet client
         self.physicsClientId = -1
         self._p = None
-        self.isRender = args.renderRobot
+        self.isRender = render
         self.setup_client()
 
         # Define action space
@@ -149,27 +147,21 @@ class Robot:
         states of the robot arm.
         :return: current state (correct, actual_q, joint_states)
         '''
-        # self-measurement
-        measure_successful = self.sensor.measure_successful
+        measure_successful = self.sensor.measure_successful  # TODO self-measurement
+
+        # Get new pose
         curr_q = self.wrist_2.get_orientation()
+        curr_q = np.array(self._p.getEulerFromQuaternion(curr_q)) / EULER_RANGE
 
-        # kept position
-        t = self.target_pos
-        c = self.transmitter.get_position()
-        pos_noise = c - t
+        curr_pos = self.transmitter.get_position()
+        pose = dict(q=curr_q, x=curr_pos)
 
-        # correct (no self-measurement)
-        correct = all(measure_successful)
+        return pose, self.joint_states  # correct, pos_noise, curr_q, self.joint_states  # TODO remove
 
-        # actual end-effector orientation
-        curr_q = self._p.getEulerFromQuaternion(curr_q)
-
-        return correct, pos_noise, curr_q, self.joint_states
-
-    def step_simulation(self):
-        for _ in range(self.args.n_step):
+    def step_simulation(self, n_steps=100, sleep=0):  # TODO CONFIG!
+        for _ in range(n_steps):
             self._p.stepSimulation()
-            time.sleep(self.args.sleep)
+            time.sleep(sleep)
 
     def sample_pose(self):
         # TODO actually sample
@@ -177,7 +169,7 @@ class Robot:
         q = np.random.uniform(-1, 1, 3)
         return {'x': pos, 'q': q}
 
-    def setup_client(self):
+    def setup_client(self, time_step=0.002, frame_skip=5, num_solver_iterations=100000):  # TODO CONFIG
         '''
         Set up BulletClient, Gravity, Plane  and setts PhysicsEngineParameter and debugging features.
         '''
@@ -191,9 +183,9 @@ class Robot:
         self._p.setGravity(0, 0, -9.81)
         self._p.loadURDF("plane.urdf")
         self._p.setDefaultContactERP(0.9)
-        self._p.setPhysicsEngineParameter(fixedTimeStep=self.args.time_step * self.args.frame_skip,
-                                          numSolverIterations=self.args.num_solver_iterations,
-                                          numSubSteps=self.args.frame_skip)
+        self._p.setPhysicsEngineParameter(fixedTimeStep=time_step * frame_skip,
+                                          numSolverIterations=num_solver_iterations,
+                                          numSubSteps=frame_skip)
 
     def close(self):
         '''
