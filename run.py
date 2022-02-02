@@ -50,13 +50,13 @@ def main():
 
     # Initialize Callback List
     log_callback = LoggingCallback()
-    eval_callback = EvalCallback(eval_env, best_model_save_path='./logs/best_model', log_path='./logs/results', eval_freq=5120)
+    eval_callback = EvalCallback(eval_env, best_model_save_path='./logs/best_model', log_path='./logs/results',
+                                 eval_freq=5120)
     callback = CallbackList([log_callback, eval_callback])
 
-
+    # use the CombinedExtractor
     policy_kwargs = dict(
         features_extractor_class=CombinedExtractor,
-        # features_extractor_kwargs=dict(features_dim=128),
     )
 
     model = PPO('MultiInputPolicy', env, verbose=1,  policy_kwargs=policy_kwargs,
@@ -65,13 +65,13 @@ def main():
 
     print('----- EVAL -----')
     # env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=20.)
-    obs = env.reset()
+    obs = eval_env.reset()
     for i in range(1000):
         action, _state = model.predict(obs, deterministic=True)
-        obs, reward, done, info = env.step(action)
-        env.render()
+        obs, reward, done, info = eval_env.step(action)
+        eval_env.render()
         if done:
-            obs = env.reset()
+            obs = eval_env.reset()
 
 
 if __name__ == '__main__':

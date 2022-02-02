@@ -43,6 +43,10 @@ class CombinedExtractor(BaseFeaturesExtractor):
                 )
                 extractors[key] = model
                 total_concat_size += 16
+            elif key == "encoding":
+                # Run through a simple MLP
+                extractors[key] = nn.Linear(subspace.shape[0], 16)
+                total_concat_size += 16
             elif key == "vector":
                 # Run through a simple MLP
                 extractors[key] = nn.Linear(subspace.shape[0], 14)
@@ -62,10 +66,6 @@ class CombinedExtractor(BaseFeaturesExtractor):
                 embedding = embedding.view(-1, 16)  # TODO make variable
                 encoded_tensor_list.append(embedding)
                 # print(observations[key])
-            elif key == 'depth':
-                embedding = extractor(observations[key])
-                embedding = embedding.view(-1, 16)
-                encoded_tensor_list.append(embedding)
             else:
                 encoded_tensor_list.append(extractor(observations[key]))
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.

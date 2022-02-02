@@ -224,12 +224,12 @@ class ActiveLocalizationEnv(gym.Env):
         if self.use_joint_states and self.robot_dynamics: obs = np.hstack((obs, self.robot_dynamics.joint_states))
         if self.use_map:
             if 'encodings' in self.map_obs:
-                obs = np.hstack((obs, self._curr_map))
-            if 'depth' in self.map_obs:
+                return dict(vector=obs, encodings=self._curr_map)
+            elif 'depth' in self.map_obs:
                 return dict(vector=obs, depth=self._curr_map)
             else:
                 return dict(vector=obs, point_cloud=self._curr_map)
-        return obs
+        return dict(vector=obs)
 
     def make_observation_space(self):
         # Numerical range of observations:
@@ -254,7 +254,7 @@ class ActiveLocalizationEnv(gym.Env):
             return gym.spaces.Dict(
                 spaces={
                     "vector": spaces.Box(low=low, high=high, dtype=np.float),
-                    "depth": gym.spaces.Box(0, 1, [self.map_size, 1], dtype=np.float)})
+                    "depth": gym.spaces.Box(0, 1, [self.map_size], dtype=np.float)})
         elif self.use_map and not 'encodings' in self.map_obs:
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(
@@ -262,9 +262,12 @@ class ActiveLocalizationEnv(gym.Env):
                     "vector": spaces.Box(low=low, high=high, dtype=np.float),
                     "point_cloud": gym.spaces.Box(0, 1, [self.map_size, dim], dtype=np.float)})
         elif self.use_map:
-            low = np.hstack((low, -np.inf * np.ones(self.map_size)))
-            high = np.hstack((high, np.inf * np.ones(self.map_size)))
-        return spaces.Box(low=low, high=high, dtype=np.float)
+            return gym.spaces.Dict(
+                spaces={
+                    "vector": spaces.Box(low=low, high=high, dtype=np.float),
+                    "encodings": gym.spaces.Box(-np.inf, np.inf, [self.map_size], dtype=np.float)})
+        return gym.spaces.Dict(
+            spaces={"vector": spaces.Box(low=low, high=high, dtype=np.float)})
 
     def _get_reward(self):
         if self.reward == 'original':
