@@ -341,6 +341,11 @@ class ActiveLocalizationEnv(gym.Env):
         self.maxaxis_per_eps.append(self._xbel.uncertainty('max_eigval'))
         self.gt_dist.append(np.linalg.norm(self._xbel.mean - self._pose_gt['x']))
 
+    def clear_loggig_lists(self):
+        self.volume_per_eps = []
+        self.maxaxis_per_eps = []
+        self.gt_dist = []
+
     @staticmethod
     def _action2rot(action):
         '''

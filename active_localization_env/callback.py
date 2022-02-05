@@ -30,27 +30,27 @@ class LoggingCallback(BaseCallback):
         self.vol_mean = 0
         self.gt_dist_mean = 0
         self.max_axis_mean = 0
+        self.env = None
 
     def _on_rollout_end(self) -> bool:
         """
         This event is triggered before updating the policy.
         """
-        env = self.model.get_env().envs[0]
+        if not self.env:
+            self.env = self.model.get_env().envs[0]
         self.rollout_cnt += 1
-        self.vol_mean += np.mean(np.asarray(env.volume_per_eps))
-        self.max_axis_mean += np.mean(np.asarray(env.maxaxis_per_eps))
-        self.gt_dist_mean += np.mean(np.asarray(env.gt_dist))
+        self.vol_mean += np.mean(np.asarray(self.env.volume_per_eps))
+        self.max_axis_mean += np.mean(np.asarray(self.env.maxaxis_per_eps))
+        self.gt_dist_mean += np.mean(np.asarray(self.env.gt_dist))
         if self.rollout_cnt == self.rollouts_per_summary:
-            self.model.logger.record('Epoch/Average Volume', self.vol_mean)
-            self.model.logger.record('Epoch/Average Max Axis', self.max_axis_mean)
-            self.model.logger.record('Epoch/Dist to Ground Truth', self.gt_dist_mean)
+            self.model.logger.record('rollout/Average Volume', self.vol_mean)
+            self.model.logger.record('rollout/Average Max Axis', self.max_axis_mean)
+            self.model.logger.record('rollout/Dist to Ground Truth', self.gt_dist_mean)
             self.rollout_cnt = 0
             self.vol_mean = 0
             self.gt_dist_mean = 0
             self.max_axis_mean = 0
-        env.volume_per_eps = []
-        env.maxaxis_per_eps = []
-        env.gt_dist = []
+        self.env.clear_loggig_lists()
         return True
 
     def _on_training_start(self) -> None:
