@@ -13,10 +13,12 @@ TOTAL_TIMESTEPS = 5000000
 class Config(object):
     def __init__(self):
         parser = argparse.ArgumentParser(description='Reinforcement Learning Active Localization')
+        parser.add_argument('--num_cpu', type=int, default=None, help='...')
         # Log Directories Setup
         parser.add_argument('--load', type=str, default=None, help='load a saved model')
         parser.add_argument('--log_name', type=str, default=datetime.strftime(datetime.now(), '%Y-%m-%d_%H-%M'),
                             help='Log Folder Name')
+
         # Learning
         parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate of Adam optimizer')
         parser.add_argument('--discount_factor', type=float, default=0.99)
@@ -24,7 +26,7 @@ class Config(object):
         parser.add_argument('--reward', type=str, default='original', metavar='N',
                             choices=['original', 'simple'], help='...')
         # Observation space
-        parser.add_argument('--map_obs', type=str, default='lidar', metavar='N',
+        parser.add_argument('--map_obs', type=str, default='point_encodings', metavar='N',
                             choices=['grid_encodings', 'point_encodings', '3d_encodings', 'lidar_encodings',
                                      'point_cloud', 'point_cloud_3d', 'lidar', 'depth'],
                             help='...')  # TODO description

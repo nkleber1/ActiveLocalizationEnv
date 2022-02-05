@@ -42,7 +42,7 @@ import vtk
 from scipy.spatial.transform import Rotation as R
 from gym import spaces
 from gym.utils import seeding
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecMonitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecMonitor, SubprocVecEnv
 from scipy.spatial.transform import Rotation
 from sklearn.neighbors import KDTree
 # Relative Imports
@@ -60,18 +60,36 @@ gym.logger.set_level(40)
 
 
 def make_envs(args):
-    env = ActiveLocalizationEnv(map_obs=args.map_obs,
-                                map_size=args.map_size,
-                                num_lasers=args.num_lasers,
-                                reward=args.reward,
-                                eval=False,
-                                use_mean_pos=args.use_mean_pos,
-                                use_measurements=args.use_measurements,
-                                use_map=args.use_map,
-                                use_map_height=args.use_map_height,
-                                use_joint_states=args.use_joint_states,
-                                robot_dynamics=args.robot_dynamics,
-                                render_robot=args.render_robot)
+    env_list = list()
+    if not args.num_cpu:
+        env = ActiveLocalizationEnv(map_obs=args.map_obs,
+                                    map_size=args.map_size,
+                                    num_lasers=args.num_lasers,
+                                    reward=args.reward,
+                                    eval=False,
+                                    use_mean_pos=args.use_mean_pos,
+                                    use_measurements=args.use_measurements,
+                                    use_map=args.use_map,
+                                    use_map_height=args.use_map_height,
+                                    use_joint_states=args.use_joint_states,
+                                    robot_dynamics=args.robot_dynamics,
+                                    render_robot=args.render_robot)
+    else:  # TODO allow vec_env
+        for i in range(args.num_cpu):
+            env = ActiveLocalizationEnv(map_obs=args.map_obs,
+                                        map_size=args.map_size,
+                                        num_lasers=args.num_lasers,
+                                        reward=args.reward,
+                                        eval=False,
+                                        use_mean_pos=args.use_mean_pos,
+                                        use_measurements=args.use_measurements,
+                                        use_map=args.use_map,
+                                        use_map_height=args.use_map_height,
+                                        use_joint_states=args.use_joint_states,
+                                        robot_dynamics=args.robot_dynamics,
+                                        render_robot=args.render_robot)
+            env_list.append(env)
+        env = SubprocVecEnv(env_list)
     eval_env = DummyVecEnv([lambda: ActiveLocalizationEnv(map_obs=args.map_obs,
                                                           map_size=args.map_size,
                                                           num_lasers=args.num_lasers,
