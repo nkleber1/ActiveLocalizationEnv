@@ -41,9 +41,9 @@ class LoggingCallback(BaseCallback):
         self.max_axis_mean += np.mean(np.asarray(env.maxaxis_per_eps))
         self.gt_dist_mean += np.mean(np.asarray(env.gt_dist))
         if self.rollout_cnt == self.rollouts_per_summary:
-            self.model.logger.record_mean('Epoch/Average Volume', self.vol_mean)
-            self.model.logger.record_mean('Epoch/Average Max Axis', self.max_axis_mean)
-            self.model.logger.record_mean('Epoch/Dist to Ground Truth', self.gt_dist_mean)
+            self.model.logger.record('Epoch/Average Volume', self.vol_mean)
+            self.model.logger.record('Epoch/Average Max Axis', self.max_axis_mean)
+            self.model.logger.record('Epoch/Dist to Ground Truth', self.gt_dist_mean)
             self.rollout_cnt = 0
             self.vol_mean = 0
             self.gt_dist_mean = 0
