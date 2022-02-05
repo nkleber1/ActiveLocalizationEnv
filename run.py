@@ -1,6 +1,5 @@
-import gym
+import os
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 import argparse
 from datetime import datetime
 from SB3_extensions import CombinedExtractor
@@ -18,11 +17,14 @@ class Config(object):
         parser.add_argument('--load', type=str, default=None, help='load a saved model')
         parser.add_argument('--log_name', type=str, default=datetime.strftime(datetime.now(), '%Y-%m-%d_%H-%M'),
                             help='Log Folder Name')
+        # Learning
+        parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate of Adam optimizer')
+        parser.add_argument('--discount_factor', type=float, default=0.99)
         # Reward
         parser.add_argument('--reward', type=str, default='original', metavar='N',
                             choices=['original', 'simple'], help='...')
         # Observation space
-        parser.add_argument('--map_obs', type=str, default='depth', metavar='N',
+        parser.add_argument('--map_obs', type=str, default='lidar', metavar='N',
                             choices=['grid_encodings', 'point_encodings', '3d_encodings', 'lidar_encodings',
                                      'point_cloud', 'point_cloud_3d', 'lidar', 'depth'],
                             help='...')  # TODO description
@@ -60,18 +62,25 @@ def main():
     )
 
     model = PPO('MultiInputPolicy', env, verbose=1,  policy_kwargs=policy_kwargs,
-                tensorboard_log='logs/tensorboard', n_steps=1024)
-    model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback)
+                gamma=args.discount_factor, ent_coef=0.01,
+                tensorboard_log='logs/tensorboard', n_steps=1024,
+                learning_rate=args.lr, vf_coef=0.5, max_grad_norm=0.5,
+                _init_setup_model=True, seed=None)
+    model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, tb_log_name=args.log_name)
 
-    print('----- EVAL -----')
-    # env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=20.)
-    obs = eval_env.reset()
-    for i in range(1000):
-        action, _state = model.predict(obs, deterministic=True)
-        obs, reward, done, info = eval_env.step(action)
-        eval_env.render()
-        if done:
-            obs = eval_env.reset()
+    model.save(os.path.join('logs/weights', args.log_name))
+    env.save(os.path.join('logs/envs', args.log_name, "env.pkl"))
+    print('\nTraining Finished Successfully !')
+
+    # print('----- EVAL -----')
+    # # env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=20.)
+    # obs = eval_env.reset()
+    # for i in range(1000):
+    #     action, _state = model.predict(obs, deterministic=True)
+    #     obs, reward, done, info = eval_env.step(action)
+    #     eval_env.render()
+    #     if done:
+    #         obs = eval_env.reset()
 
 
 if __name__ == '__main__':
