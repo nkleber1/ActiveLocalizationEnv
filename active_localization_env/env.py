@@ -272,7 +272,7 @@ class ActiveLocalizationEnv(gym.Env):
             return gym.spaces.Dict(
                 spaces={
                     "vector": spaces.Box(low=low, high=high, dtype=np.float),
-                    "depth": gym.spaces.Box(0, 1, [self.map_size], dtype=np.float)})
+                    "depth": gym.spaces.Box(0, 1, [self.map_size, 1], dtype=np.float)})
         elif self.use_map and not 'encodings' in self.map_obs:
             dim = 3 if '3d' in self.map_obs else 2
             return gym.spaces.Dict(

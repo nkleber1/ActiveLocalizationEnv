@@ -65,7 +65,10 @@ class CombinedExtractor(BaseFeaturesExtractor):
                 embedding, _, _ = extractor(observations[key])
                 embedding = embedding.view(-1, 16)  # TODO make variable
                 encoded_tensor_list.append(embedding)
-                # print(observations[key])
+            elif key == 'depth':
+                embedding = extractor(observations[key])
+                embedding = embedding.view(-1, 16)  # TODO make variable
+                encoded_tensor_list.append(embedding)
             else:
                 encoded_tensor_list.append(extractor(observations[key]))
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
