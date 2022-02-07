@@ -488,13 +488,11 @@ class ActiveLocalizationEnv(gym.Env):
             data = np.load(map_file)
             return data[np.random.choice(data.shape[0], int(self.map_size), replace=False)]
         elif self.map_obs == 'lidar_encodings':
-            bsp_tree = self._mesh.bsp_tree
-            point_cloud = do_lidar_scan(position, bsp_tree)
+            point_cloud = do_lidar_scan(position, self._mesh, num_points=self.map_size)
             encoding = self.encoder.encode_np(point_cloud)
             return encoding
         elif self.map_obs == 'lidar':
-            bsp_tree = self._mesh.bsp_tree
-            point_cloud = do_lidar_scan(position, bsp_tree, num_points=self.map_size)
+            point_cloud = do_lidar_scan(position, self._mesh, num_points=self.map_size)
             return point_cloud
         elif self.map_obs == 'depth':
             bsp_tree = self._mesh.bsp_tree

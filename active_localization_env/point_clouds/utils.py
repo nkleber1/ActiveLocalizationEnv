@@ -3,7 +3,10 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 
-def do_lidar_scan(position, bsp_tree, num_points=1024):
+def do_lidar_scan(position, mesh, num_points=1024):
+    bsp_tree = mesh.bsp_tree
+    max_dim = (mesh.max_bounds - mesh.min_bounds).max()
+    min_dim = mesh.min_bounds.min()
     # Perform intersection
     r = R.from_euler('z', 360 / num_points, degrees=True).as_matrix()
     ray = np.array([5000, 0, 0])
@@ -23,8 +26,8 @@ def do_lidar_scan(position, bsp_tree, num_points=1024):
         else:
             point_cloud = np.vstack([point_cloud, new_point])
         ray = ray.dot(r)
-    point_cloud = point_cloud - point_cloud.min()
-    point_cloud = point_cloud / point_cloud.max()
+    point_cloud = point_cloud - min_dim
+    point_cloud = point_cloud / max_dim
     point_cloud = np.expand_dims(point_cloud, 0)
     return point_cloud
 
