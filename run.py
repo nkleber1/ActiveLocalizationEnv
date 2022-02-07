@@ -42,7 +42,7 @@ class Config(object):
         parser.add_argument('--render_robot', type=bool, default=False, help='...')
 
         # Test
-        parser.add_argument('--noise_sample_strategy', type=str, default='inverse', help='...')
+        parser.add_argument('--noise_sample_strategy', type=str, default='conical', help='...')
         self.args = parser.parse_args()
 
     def get_arguments(self):
