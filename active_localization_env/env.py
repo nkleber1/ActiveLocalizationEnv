@@ -488,7 +488,7 @@ class ActiveLocalizationEnv(gym.Env):
             data = np.load(map_file)
             return data[np.random.choice(data.shape[0], int(self.map_size), replace=False)]
         elif self.map_obs == 'lidar_encodings':
-            point_cloud = do_lidar_scan(position, self._mesh, num_points=self.map_size)
+            point_cloud = do_lidar_scan(position, self._mesh)
             encoding = self.encoder.encode_np(point_cloud)
             return encoding
         elif self.map_obs == 'lidar':
