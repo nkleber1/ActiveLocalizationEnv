@@ -17,7 +17,7 @@ def get_cmap(num_points):
         [np.array(cm(i / num_points)[:-1]) for i in range(num_points)])
 
 
-def sample_rotations(rot, angle, size=1, strategy='conical'):
+def sample_rotations(rot, angle, size=1, strategy='conical', z=None, laser_range=5000.):
     '''
     Sample random rotations around a given quaternion rotation.
     '''
@@ -32,6 +32,15 @@ def sample_rotations(rot, angle, size=1, strategy='conical'):
         x, y, z = np.sin(theta / 2) * random_unit_vectors(size)
         noise = Rotation.from_quat(np.column_stack([x, y, z, w]).squeeze(),
                                    normalized=True)
+    elif strategy == 'inverse':
+        # A totally unrealistic noise which is lower when measuring against objects more far away.
+        # We use it to check if the agent learn a different behavior if the physics of the lasers are different.
+        wight = ((laser_range - z) / laser_range)**2
+        rpy = np.random.uniform(-angle*wight, angle*wight, (size, 3))
+        noise = Rotation.from_euler('xyz', rpy)
+    elif strategy == 'zero_noise':
+        rpy = np.random.uniform(0, 0, (size, 3))
+        noise = Rotation.from_euler('xyz', rpy)
     else:
         raise ValueError("Supported strategies are ['euler', 'conical']")
     # Add noise

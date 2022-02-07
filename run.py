@@ -40,6 +40,9 @@ class Config(object):
         # pyBullet
         parser.add_argument('--robot_dynamics', type=bool, default=False, help='...')
         parser.add_argument('--render_robot', type=bool, default=False, help='...')
+
+        # Test
+        parser.add_argument('--noise_sample_strategy', type=str, default='inverse', help='...')
         self.args = parser.parse_args()
 
     def get_arguments(self):

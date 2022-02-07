@@ -13,7 +13,8 @@ class CustomBayesFilter:
                  mesh=None,
                  num_samples=30,
                  num_casts=20,
-                 angle_noise=5 * np.pi / 180):
+                 angle_noise=5 * np.pi / 180,
+                 sample_strategy='conical'):
         # Initialization
         self._mesh = mesh
         self._lasers = lasers
@@ -25,6 +26,7 @@ class CustomBayesFilter:
         self._num_casts = num_casts
         # Half-angle of cone within which rotation noise is sampled
         self._angle_noise = angle_noise
+        self.sample_strategy = sample_strategy
 
     def measurement_update(self, xbel, q, z, hist_bin_size=1):
         '''
@@ -40,7 +42,8 @@ class CustomBayesFilter:
         noisy_rotations = sample_rotations(q,
                                            self._angle_noise,
                                            size=self._num_samples *
-                                           self._num_casts)
+                                           self._num_casts,
+                                           strategy=self.sample_strategy, z=z, laser_range=self._lasers.range)
         # Laser rays from sampled positions and rotations
         endpoints = samples[:, None, :, None] + self._lasers.relative_endpoints(
             noisy_rotations).reshape(

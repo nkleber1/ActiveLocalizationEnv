@@ -73,7 +73,8 @@ def make_envs(args):
                                     use_map_height=args.use_map_height,
                                     use_joint_states=args.use_joint_states,
                                     robot_dynamics=args.robot_dynamics,
-                                    render_robot=args.render_robot)
+                                    render_robot=args.render_robot,
+                                    noise_sample_strategy=args.noise_sample_strategy)
     else:  # TODO allow vec_env
         for i in range(args.num_cpu):
             env = ActiveLocalizationEnv(map_obs=args.map_obs,
@@ -87,7 +88,8 @@ def make_envs(args):
                                         use_map_height=args.use_map_height,
                                         use_joint_states=args.use_joint_states,
                                         robot_dynamics=args.robot_dynamics,
-                                        render_robot=args.render_robot)
+                                        render_robot=args.render_robot,
+                                        noise_sample_strategy=args.noise_sample_strategy)
             env_list.append(env)
         env = SubprocVecEnv(env_list)
     eval_env = DummyVecEnv([lambda: ActiveLocalizationEnv(map_obs=args.map_obs,
@@ -101,7 +103,8 @@ def make_envs(args):
                                                           use_map_height=args.use_map_height,
                                                           use_joint_states=args.use_joint_states,
                                                           robot_dynamics=args.robot_dynamics,
-                                                          render_robot=args.render_robot)])
+                                                          render_robot=args.render_robot,
+                                                          noise_sample_strategy=args.noise_sample_strategy)])
     eval_env = VecMonitor(eval_env)
     return env, eval_env
 
@@ -109,7 +112,8 @@ def make_envs(args):
 class ActiveLocalizationEnv(gym.Env):
     def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, use_joint_states=True,
-                 robot_dynamics=False, render_robot=False):
+                 robot_dynamics=False, render_robot=False,
+                 noise_sample_strategy='conical'):
 
         if eval:
             self.dataset_dir = DATASET_EVAL_DIR
@@ -133,7 +137,7 @@ class ActiveLocalizationEnv(gym.Env):
         # Initialize Measurements class
         self._meas = LaserMeasurements(self._lasers.num)
         # Initialize Filter update class
-        self._bayes_filter = CustomBayesFilter(self._lasers)
+        self._bayes_filter = CustomBayesFilter(self._lasers, sample_strategy=noise_sample_strategy)
         # Maximum standard devitation
         self._max_stddev = POSITION_STDDEV
         # Minimum offset from mesh boundaries to sample positions
