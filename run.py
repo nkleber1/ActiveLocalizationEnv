@@ -43,6 +43,7 @@ class Config(object):
 
         # Test
         parser.add_argument('--noise_sample_strategy', type=str, default='conical', help='...')
+        parser.add_argument('--batch_size', type=int, default=64, help='...')
         self.args = parser.parse_args()
 
     def get_arguments(self):
@@ -70,6 +71,7 @@ def main():
                 gamma=args.discount_factor, ent_coef=0.01,
                 tensorboard_log='logs/tensorboard', n_steps=1024,
                 learning_rate=args.lr, vf_coef=0.5, max_grad_norm=0.5,
+                batch_size=args.batch_size, clip_range=0.2, clip_range_vf=None, gae_lambda=0.95,
                 _init_setup_model=True, seed=None)
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, tb_log_name=args.log_name)
 
