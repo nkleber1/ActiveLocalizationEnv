@@ -1,5 +1,33 @@
 import numpy as np
-from stable_baselines3.common.callbacks import BaseCallback
+import gym
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import VecEnv, sync_envs_normalization
+from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
+from typing import Union
+import os
+
+class CustomEvalCallback(EvalCallback):
+    def __init__(self, eval_env: Union[gym.Env, VecEnv], **kwargs):
+        super().__init__(eval_env, **kwargs)
+        self.vol_mean = 0
+        self.gt_dist_mean = 0
+        self.max_axis_mean = 0
+
+    def _on_rollout_end(self) -> bool:
+        """
+        This event is triggered before updating the policy.
+        """
+        #print('eval', self.eval_env.envs[0])
+        eval_env = self.eval_env.envs[0]
+        vol_mean = np.mean(np.asarray(eval_env.volume_per_eps))
+        max_axis_mean = np.mean(np.asarray(eval_env.maxaxis_per_eps))
+        gt_dist_mean = np.mean(np.asarray(eval_env.gt_dist))
+        if isinstance(gt_dist_mean, float):
+            self.model.logger.record('eval/Average Volume', vol_mean)
+            self.model.logger.record('eval/Average Max Axis', max_axis_mean)
+            self.model.logger.record('eval/Dist to Ground Truth', gt_dist_mean)
+        eval_env.clear_loggig_lists()
+        return True
 
 
 class LoggingCallback(BaseCallback):
@@ -36,6 +64,7 @@ class LoggingCallback(BaseCallback):
         """
         This event is triggered before updating the policy.
         """
+        #print('train', self.model.get_env().envs[0])
         if not self.env:
             self.env = self.model.get_env().envs[0]
         self.rollout_cnt += 1
