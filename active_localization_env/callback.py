@@ -1,7 +1,7 @@
 import numpy as np
 import gym
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import VecEnv, sync_envs_normalization
+import math
+from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from typing import Union
 import os
@@ -9,9 +9,6 @@ import os
 class CustomEvalCallback(EvalCallback):
     def __init__(self, eval_env: Union[gym.Env, VecEnv], **kwargs):
         super().__init__(eval_env, **kwargs)
-        self.vol_mean = None
-        self.max_axis_mean = None
-        self.gt_dist_mean = None
 
     def _on_rollout_end(self) -> bool:
         """
@@ -22,13 +19,11 @@ class CustomEvalCallback(EvalCallback):
         vol_mean = np.mean(np.asarray(eval_env.volume_per_eps))
         max_axis_mean = np.mean(np.asarray(eval_env.maxaxis_per_eps))
         gt_dist_mean = np.mean(np.asarray(eval_env.gt_dist))
-        if isinstance(gt_dist_mean, float):
-            self.vol_mean = vol_mean
-            self.max_axis_mean = max_axis_mean
-            self.gt_dist_mean = gt_dist_mean
-        self.model.logger.record('eval/Average Volume', self.vol_mean)
-        self.model.logger.record('eval/Average Max Axis', self.max_axis_mean)
-        self.model.logger.record('eval/Dist to Ground Truth', self.gt_dist_mean)
+        if not math.isnan(gt_dist_mean):
+            print(gt_dist_mean)
+            self.model.logger.record('eval/Average Volume', vol_mean)
+            self.model.logger.record('eval/Average Max Axis', max_axis_mean)
+            self.model.logger.record('eval/Dist to Ground Truth', gt_dist_mean)
         eval_env.clear_loggig_lists()
         return True
 
