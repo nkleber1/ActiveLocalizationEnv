@@ -33,11 +33,11 @@ class CustomBayesFilter:
         Update belief based on a measurment 'z' from ground truth position.
         '''
         # Position samples
-        samples = xbel.sample(self._num_samples)
+        pos_samples = xbel.sample(self._num_samples)
         # Histogram bin containing true measurement
         zint = (z // hist_bin_size).astype(int)
         num_bins = int(self._lasers.range // hist_bin_size)
-        in_range = (zint < num_bins)
+        in_range = (zint < num_bins)  # TODO WHts This?
         # Rotation samples
         noisy_rotations = sample_rotations(q,
                                            self._angle_noise,
@@ -45,13 +45,14 @@ class CustomBayesFilter:
                                            self._num_casts,
                                            strategy=self.sample_strategy, z=z, laser_range=self._lasers.range)
         # Laser rays from sampled positions and rotations
-        endpoints = samples[:, None, :, None] + self._lasers.relative_endpoints(
+        endpoints = pos_samples[:, None, :, None] + self._lasers.relative_endpoints(
             noisy_rotations).reshape(
                 (self._num_samples, self._num_casts, 3, self._lasers.num))
+        # TODO Why do we take measurements from sampled positions? (!)
         # Intersections of laser rays with mesh
         intersections = np.empty_like(endpoints)
         for i in range(self._num_samples):
-            xi = samples[i]
+            xi = pos_samples[i]
             for j in range(self._lasers.num):
                 endpoints_ij = endpoints[i, :, :, j]
                 intersections[i, :, :, j] = np.apply_along_axis(
@@ -59,13 +60,13 @@ class CustomBayesFilter:
                     axis=-1,
                     arr=endpoints_ij)
         # Distance measurements
-        Z = np.linalg.norm(intersections - samples[:, None, :, None], axis=2)
+        Z = np.linalg.norm(intersections - pos_samples[:, None, :, None], axis=2)
         # Histogram of measurement samples
         hist = histogram(Z, self._lasers, hist_bin_size)
         # Likelihood of measurement
-        pxz = np.prod(hist[:, in_range, zint[in_range]], axis=1)
+        pxz = np.prod(hist[:, in_range, zint[in_range]], axis=1)  # Just the bin of the real measurement (z) TODO ?
         # Only update belief if there are enough samples with non-zero probability
         if np.count_nonzero(pxz) > self._min_samples:
             # Update belief parameters with sample mean/covariance
-            xbel.mean = np.average(samples.T, axis=1, weights=pxz)
-            xbel.cov = np.cov(samples.T, aweights=pxz)
+            xbel.mean = np.average(pos_samples.T, axis=1, weights=pxz)
+            xbel.cov = np.cov(pos_samples.T, aweights=pxz)
