@@ -59,7 +59,7 @@ def main():
     # Initialize Callback List
     log_callback = LoggingCallback()
     eval_callback = CustomEvalCallback(eval_env, best_model_save_path='./logs/best_model', log_path='./logs/results',
-                                 eval_freq= 1024) # 5120)
+                                 eval_freq= 5120)
     callback = CallbackList([log_callback, eval_callback])
 
     # use the CombinedExtractor
