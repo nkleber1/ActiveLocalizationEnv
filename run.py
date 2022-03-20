@@ -1,5 +1,5 @@
 import os
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, TD3
 import argparse
 from datetime import datetime
 from SB3_extensions import CombinedExtractor
@@ -20,6 +20,8 @@ class Config(object):
                             help='Log Folder Name')
 
         # Learning
+        parser.add_argument('--algo', type=str, default='TD3',
+                            help='chose algo')
         parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate of Adam optimizer')
         parser.add_argument('--discount_factor', type=float, default=0.99)
         # Reward
@@ -67,13 +69,20 @@ def main():
         features_extractor_class=CombinedExtractor,
     )
 
-    model = PPO('MultiInputPolicy', env, verbose=1,  policy_kwargs=policy_kwargs,
-                gamma=args.discount_factor, ent_coef=0.01,
-                tensorboard_log='logs/tensorboard', n_steps=1024,
-                learning_rate=args.lr, vf_coef=0.5, max_grad_norm=0.5,
-                batch_size=args.batch_size, clip_range=0.2, clip_range_vf=None, gae_lambda=0.95,
-                _init_setup_model=True, seed=None)
+    if args.algo == 'PPO':
+        model = PPO('MultiInputPolicy', env, verbose=1,  policy_kwargs=policy_kwargs,
+                    gamma=args.discount_factor, ent_coef=0.01,
+                    tensorboard_log='logs/tensorboard', n_steps=1024,
+                    learning_rate=args.lr, vf_coef=0.5, max_grad_norm=0.5,
+                    batch_size=args.batch_size, clip_range=0.2, clip_range_vf=None, gae_lambda=0.95,
+                    _init_setup_model=True, seed=None)
+    else:
+        model = TD3('MultiInputPolicy', env, gamma=args.discount_factor, learning_rate=args.lr, buffer_size=50000,
+                    learning_starts=100, train_freq=100, gradient_steps=100, batch_size=128, tau=0.005, policy_delay=2,
+                    action_noise=None, target_policy_noise=0.2, target_noise_clip=0.5, verbose=1,
+                    tensorboard_log='logs/tensorboard', _init_setup_model=True, policy_kwargs=None, seed=None)
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback, tb_log_name=args.log_name)
+
 
     model.save(os.path.join('logs/weights', args.log_name))
     env.save(os.path.join('logs/envs', args.log_name, "env.pkl"))
