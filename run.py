@@ -20,7 +20,7 @@ class Config(object):
                             help='Log Folder Name')
 
         # Learning
-        parser.add_argument('--algo', type=str, default='TD3',
+        parser.add_argument('--algo', type=str, default='PPO',
                             help='chose algo')
         parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate of Adam optimizer')
         parser.add_argument('--discount_factor', type=float, default=0.99)
