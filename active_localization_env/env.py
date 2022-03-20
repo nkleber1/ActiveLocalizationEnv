@@ -13,19 +13,19 @@ POSITION_STDDEV = 50  # Initial position standard deviation
 N_DISC_ACTIONS = None  # Discretization of action space
 REWARD_ALPHA = 1  # Final reward weight for max eigen value reduction
 USE_GOAL_REWARD = True  # Use extra  reward if goal is reached
-MIN_UNCERTAINTY = 5  # Uncertainty goal
+MIN_UNCERTAINTY = 25  # Uncertainty goal
 GOAL_REWARD = 100  # Value for goal achieved
 HORIZON = 10  # Maximum number of steps (measurements) in one epoch
 
 # Params for reward function
 USE_UNCERT_REWARD = True
-UNCERT_REWARD = 0.1  # Weight for uncertainty reduction reward
+UNCERT_REWARD = 0.2  # Weight for uncertainty reduction reward
 USE_DIST_REWARD = True
-DIST_REWARD = 0.2  # Weight for distance reduction reward
+DIST_REWARD = 0.3  # Weight for distance reduction reward
 USE_EIGVAL_REWARD = True
 EIGVAL_REWARD = 0.5  # eight for eigen value reduction reward
-MEASUREMENT_COST = 0.0
-VAR_EPS_LEN = False  # Variable Episode Length
+MEASUREMENT_COST = 10.0
+VAR_EPS_LEN = True  # Variable Episode Length
 
 # Params for dirs
 DATASET_DIR = 'active_localization_env/data/train_data'
