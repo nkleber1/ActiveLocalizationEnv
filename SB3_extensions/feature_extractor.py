@@ -6,7 +6,7 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 
 class CombinedExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space: gym.spaces.Dict):
+    def __init__(self, observation_space: gym.spaces.Dict, feat_dim=16):
         # We do not know features-dim here before going over all the items,
         # so put something dummy for now. PyTorch requires calling
         # nn.Module.__init__ before adding modules
@@ -26,7 +26,7 @@ class CombinedExtractor(BaseFeaturesExtractor):
                 encoder_args = {  # TODO move to args
                     'pretrain': 'active_localization_env/point_clouds/weights/lidar_16.pkl',
                     'encoder_type': 'graph_s',
-                    'feat_dims': 16,
+                    'feat_dims': feat_dim,
                     'k': 64,
                     'dataset': 'original_uni',
                     'no_vae': False,

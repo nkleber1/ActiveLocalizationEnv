@@ -13,7 +13,7 @@ POSITION_STDDEV = 50  # Initial position standard deviation
 N_DISC_ACTIONS = None  # Discretization of action space
 REWARD_ALPHA = 1  # Final reward weight for max eigen value reduction
 USE_GOAL_REWARD = True  # Use extra  reward if goal is reached
-MIN_UNCERTAINTY = 25  # Uncertainty goal
+MIN_UNCERTAINTY = 5  # Uncertainty goal
 GOAL_REWARD = 100  # Value for goal achieved
 HORIZON = 10  # Maximum number of steps (measurements) in one epoch
 
