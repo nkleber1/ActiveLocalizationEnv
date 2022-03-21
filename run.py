@@ -49,7 +49,7 @@ class Config(object):
                             help='Maximum number of steps (measurements) in one epoch')
         parser.add_argument('--min_uncertainty', type=float, default=None,
                             help='Uncertainty goal')
-        parser.add_argument('--measurements_cost', type=float, default=None,
+        parser.add_argument('--measurements_cost', type=float, default=0,
                             help='Discretization of action space')
         # Test
         parser.add_argument('--noise_sample_strategy', type=str, default='conical', help='...')
