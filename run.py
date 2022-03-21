@@ -45,11 +45,11 @@ class Config(object):
         # Env
         parser.add_argument('--n_disc_actions', type=int, default=None,
                             help='Discretization of action space')
-        parser.add_argument('--horizon', type=int, default=None,
+        parser.add_argument('--horizon', type=int, default=10,
                             help='Maximum number of steps (measurements) in one epoch')
-        parser.add_argument('--min_uncertainty', type=float, default=None,
+        parser.add_argument('--min_uncertainty', type=float, default=5,
                             help='Uncertainty goal')
-        parser.add_argument('--measurements_cost', type=float, default=0,
+        parser.add_argument('--measurements_cost', type=float, default=10.0,
                             help='Discretization of action space')
         # Test
         parser.add_argument('--noise_sample_strategy', type=str, default='conical', help='...')
