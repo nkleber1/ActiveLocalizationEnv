@@ -74,7 +74,12 @@ def make_envs(args):
                                     use_joint_states=args.use_joint_states,
                                     robot_dynamics=args.robot_dynamics,
                                     render_robot=args.render_robot,
-                                    noise_sample_strategy=args.noise_sample_strategy)
+                                    noise_sample_strategy=args.noise_sample_strategy,
+                                    n_disc_actions=args.n_disc_actions,
+                                    horizon=args.horizon,
+                                    min_uncertainty=args.min_uncertainty,
+                                    measurements_cost=args.measurements_cost
+                                    )
     else:  # TODO allow vec_env
         for i in range(args.num_cpu):
             env = ActiveLocalizationEnv(map_obs=args.map_obs,
@@ -89,7 +94,11 @@ def make_envs(args):
                                         use_joint_states=args.use_joint_states,
                                         robot_dynamics=args.robot_dynamics,
                                         render_robot=args.render_robot,
-                                        noise_sample_strategy=args.noise_sample_strategy)
+                                        noise_sample_strategy=args.noise_sample_strategy,
+                                        n_disc_actions=args.n_disc_actions,
+                                        horizon=args.horizon,
+                                        min_uncertainty=args.min_uncertainty,
+                                        measurements_cost=args.measurements_cost)
             env_list.append(env)
         env = SubprocVecEnv(env_list)
     eval_env = DummyVecEnv([lambda: ActiveLocalizationEnv(map_obs=args.map_obs,
@@ -104,7 +113,11 @@ def make_envs(args):
                                                           use_joint_states=args.use_joint_states,
                                                           robot_dynamics=args.robot_dynamics,
                                                           render_robot=args.render_robot,
-                                                          noise_sample_strategy=args.noise_sample_strategy)])
+                                                          noise_sample_strategy=args.noise_sample_strategy,
+                                                          n_disc_actions=args.n_disc_actions,
+                                                          horizon=args.horizon,
+                                                          min_uncertainty=args.min_uncertainty,
+                                                          measurements_cost=args.measurements_cost)])
     eval_env = VecMonitor(eval_env)
     return env, eval_env
 
@@ -113,7 +126,8 @@ class ActiveLocalizationEnv(gym.Env):
     def __init__(self, map_obs='point_encodings', map_size=None, num_lasers=1, reward='original', eval=False,
                  use_mean_pos=True, use_measurements=True, use_map=True, use_map_height=True, use_joint_states=True,
                  robot_dynamics=False, render_robot=False,
-                 noise_sample_strategy='conical'):
+                 noise_sample_strategy='conical',
+                 n_disc_actions=None, horizon=10, min_uncertainty=5, measurements_cost=10.0):
 
         if eval:
             self.dataset_dir = DATASET_EVAL_DIR
@@ -168,12 +182,12 @@ class ActiveLocalizationEnv(gym.Env):
                                        high=np.array([1, 1, 1]),
                                        dtype=np.float)
 
-        self._n_disc_actions = N_DISC_ACTIONS
+        self._n_disc_actions = n_disc_actions
         # Weighing factor for final reward
         self.reward = reward
         self._alpha = REWARD_ALPHA
         self.use_goal_rew = USE_GOAL_REWARD
-        self.min_uncertainty = MIN_UNCERTAINTY
+        self.min_uncertainty = min_uncertainty
         self.goal_rew = GOAL_REWARD
         # store values for logging
         self.volume_per_eps = []
@@ -190,6 +204,8 @@ class ActiveLocalizationEnv(gym.Env):
         self._current_step = None
         self._curr_map = None
         self._initial_maxeigval = None
+        self.horizon = horizon
+        self.measurements_cost = measurements_cost
 
         # Example kwargs # TODO add to Config
         encoder_args = {
@@ -317,7 +333,7 @@ class ActiveLocalizationEnv(gym.Env):
         reward = USE_UNCERT_REWARD * UNCERT_REWARD * (
                 self._prev_uncertainty - uncertainty) + USE_DIST_REWARD * DIST_REWARD * (
                          self._prev_dist - dist) + USE_EIGVAL_REWARD * EIGVAL_REWARD * (
-                         self._prev_max_eigval - max_eigval) - MEASUREMENT_COST
+                         self._prev_max_eigval - max_eigval) - self.measurements_cost
         if self._is_done():
             # Final reward is the reduction in the major axis length of the
             # covariance ellipsoid from the start of the episode
@@ -333,7 +349,7 @@ class ActiveLocalizationEnv(gym.Env):
         Termination condition of episode.
         '''
         uncertainty = self._xbel.uncertainty('max_eigval')
-        done = (self._current_step >= HORIZON)
+        done = (self._current_step >= self.horizon)
         if VAR_EPS_LEN:
             done = bool(done or (uncertainty < MIN_UNCERTAINTY))
         if done:

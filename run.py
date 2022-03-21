@@ -42,7 +42,15 @@ class Config(object):
         # pyBullet
         parser.add_argument('--robot_dynamics', type=bool, default=False, help='...')
         parser.add_argument('--render_robot', type=bool, default=False, help='...')
-
+        # Env
+        parser.add_argument('--n_disc_actions', type=str, default=None,
+                            help='Discretization of action space')
+        parser.add_argument('--horizon', type=str, default=None,
+                            help='Maximum number of steps (measurements) in one epoch')
+        parser.add_argument('--min_uncertainty', type=str, default=None,
+                            help='Uncertainty goal')
+        parser.add_argument('--n_disc_actions', type=str, default=None,
+                            help='Discretization of action space')
         # Test
         parser.add_argument('--noise_sample_strategy', type=str, default='conical', help='...')
         parser.add_argument('--batch_size', type=int, default=64, help='...')
